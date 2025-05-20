@@ -182,17 +182,17 @@ def debug_command(server: PluginServerInterface, source: CommandSource):
     包括配置、数据状态和服务器环境信息
     """
     if not config.get('debug', False):
-        source.reply('§c调试模式未开启，请在配置文件中设置debug为true')
+        server.say('§c调试模式未开启，请在配置文件中设置debug为true')
         return
     
-    source.reply('§6§l===== 调试信息 =====')
-    source.reply(f'§7当前配置: {json.dumps(config, ensure_ascii=False)}')
-    source.reply(f'§7挖掘数据: {len(mining_stats)}条')
-    source.reply(f'§7放置数据: {len(placement_stats)}条')
+    server.say('§6§l===== 调试信息 =====')
+    server.say(f'§7当前配置: {json.dumps(config, ensure_ascii=False)}')
+    server.say(f'§7挖掘数据: {len(mining_stats)}条')
+    server.say(f'§7放置数据: {len(placement_stats)}条')
     
     # 显示服务器环境信息
     server_dir = os.path.abspath('.')
-    source.reply(f'§7服务器目录: {server_dir}')
+    server.say(f'§7服务器目录: {server_dir}')
     
     # 尝试查找统计文件目录
     possible_dirs = [
@@ -202,12 +202,12 @@ def debug_command(server: PluginServerInterface, source: CommandSource):
     
     for stats_dir in possible_dirs:
         if os.path.exists(stats_dir):
-            source.reply(f'§a找到统计文件目录: {stats_dir}')
+            server.say(f'§a找到统计文件目录: {stats_dir}')
             # 列出几个统计文件示例
             stats_files = os.listdir(stats_dir)[:5]  # 最多显示5个
-            source.reply(f'§7统计文件示例: {", ".join(stats_files)}')
+            server.say(f'§7统计文件示例: {", ".join(stats_files)}')
         else:
-            source.reply(f'§c未找到统计文件目录: {stats_dir}')
+            server.say(f'§c未找到统计文件目录: {stats_dir}')
 
 def update_command(server: PluginServerInterface, source: CommandSource):
     """
@@ -276,9 +276,22 @@ def update_stats_for_all_players(server: PluginServerInterface) -> int:
                 # 提取放置数据
                 place_count = 0
                 if 'stats' in stats_data and 'minecraft:used' in stats_data['stats']:
+                    # 物品和工具的关键词列表（不计入放置统计）
+                    non_block_items = [
+                        'sword', 'axe', 'pickaxe', 'shovel', 'hoe', 'bow', 'shield', 
+                        'helmet', 'chestplate', 'leggings', 'boots', 'potion', 
+                        'splash_potion', 'lingering_potion', 'experience_bottle',
+                        'fishing_rod', 'flint_and_steel', 'shears', 'lead', 'name_tag',
+                        'minecart', 'boat', 'saddle', 'horse_armor', 'elytra',
+                        'trident', 'crossbow', 'book', 'map', 'compass', 'clock',
+                        'spyglass', 'totem', 'apple', 'beef', 'chicken', 'cod',
+                        'salmon', 'potato', 'carrot', 'bread', 'cookie', 'melon',
+                        'egg', 'milk', 'mushroom', 'rabbit', 'mutton', 'porkchop'
+                    ]
+                    
                     for block_id, count in stats_data['stats']['minecraft:used'].items():
-                        # 只统计方块，忽略物品
-                        if ':' in block_id and not any(x in block_id for x in ['bucket', 'sword', 'axe', 'shovel', 'hoe', 'pickaxe']):
+                        # 只要不在排除列表中的物品，都计入放置统计
+                        if ':' in block_id and not any(item in block_id for item in non_block_items):
                             place_count += count
                 
                 # 获取玩家名
@@ -416,15 +429,15 @@ def show_mining_stats(server: PluginServerInterface, source: CommandSource):
                 break
     
     if not filtered_stats:
-        source.reply('§c没有白名单玩家的挖掘数据')
+        server.say('§c没有白名单玩家的挖掘数据')
         return
     
     sorted_data = sorted(filtered_stats.items(), key=lambda x: x[1], reverse=True)
-    source.reply(f'§6§l===== 挖掘榜 - 前{min(config["top_count"], len(sorted_data))}名 =====')
+    server.say(f'§6§l===== 挖掘榜 - 前{min(config["top_count"], len(sorted_data))}名 =====')
     
     for i, (name, count) in enumerate(sorted_data[:config['top_count']]):
         rank_color = '§e' if i < 3 else '§f'  # 前三名用金色
-        source.reply(f'{rank_color}{i+1}. {name} - {count} 方块')
+        server.say(f'{rank_color}{i+1}. {name} - {count} 方块')
 
 def show_placement_stats(server: PluginServerInterface, source: CommandSource):
     """
@@ -451,15 +464,15 @@ def show_placement_stats(server: PluginServerInterface, source: CommandSource):
                 break
     
     if not filtered_stats:
-        source.reply('§c没有白名单玩家的放置数据')
+        server.say('§c没有白名单玩家的放置数据')
         return
     
     sorted_data = sorted(filtered_stats.items(), key=lambda x: x[1], reverse=True)
-    source.reply(f'§6§l===== 放置榜 - 前{min(config["top_count"], len(sorted_data))}名 =====')
+    server.say(f'§6§l===== 放置榜 - 前{min(config["top_count"], len(sorted_data))}名 =====')
     
     for i, (name, count) in enumerate(sorted_data[:config['top_count']]):
         rank_color = '§e' if i < 3 else '§f'  # 前三名用金色
-        source.reply(f'{rank_color}{i+1}. {name} - {count} 方块')
+        server.say(f'{rank_color}{i+1}. {name} - {count} 方块')
 
 def show_help(source: CommandSource):
     """
@@ -467,12 +480,13 @@ def show_help(source: CommandSource):
     列出所有可用命令及其功能描述
     """
     prefix = config['command_prefix']
-    source.reply('§6§l===== 挖掘放置榜 - 帮助 =====')
-    source.reply(f'§7{prefix} mine§f - 显示挖掘榜')
-    source.reply(f'§7{prefix} place§f - 显示放置榜')
-    source.reply(f'§7{prefix} update§f - 手动更新统计数据')
-    source.reply(f'§7{prefix} debug§f - 显示调试信息')
-    source.reply(f'§7{prefix} help§f - 显示此帮助信息')
+    server = source.get_server()  # 从source获取服务器接口
+    server.say('§6§l===== 挖掘放置榜 - 帮助 =====')
+    server.say(f'§7{prefix} mine§f - 显示挖掘榜')
+    server.say(f'§7{prefix} place§f - 显示放置榜')
+    server.say(f'§7{prefix} update§f - 手动更新统计数据')
+    server.say(f'§7{prefix} debug§f - 显示调试信息')
+    server.say(f'§7{prefix} help§f - 显示此帮助信息')
 
 def on_unload(server: PluginServerInterface):
     """
